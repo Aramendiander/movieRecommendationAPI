@@ -56,7 +56,7 @@ def get_recommendations(movie_titles, num_recommendations=10, include_sequels=Tr
                 exact_match['actor_3_name'].iloc[0]
             ])
             input_directors.add(exact_match['director_name'].iloc[0])
-            input_years.add(exact_match['title_year'].iloc[0])
+            input_years.add(int(exact_match['title_year'].iloc[0]) if pd.notna(exact_match['title_year'].iloc[0]) else None)
             input_languages.add(exact_match['language'].iloc[0])
             input_countries.add(exact_match['country'].iloc[0])
             input_keywords.update(exact_match['plot_keywords'].iloc[0].split('|') if isinstance(exact_match['plot_keywords'].iloc[0], str) else [])
@@ -65,6 +65,7 @@ def get_recommendations(movie_titles, num_recommendations=10, include_sequels=Tr
     input_directors = {director for director in input_directors if isinstance(director, str) and director.strip()}
     input_languages = {lang for lang in input_languages if isinstance(lang, str) and lang.strip()}
     input_countries = {country for country in input_countries if isinstance(country, str) and country.strip()}
+    input_years = {year for year in input_years if year is not None}
     
     if len(matching_indices) == 0:
         print(f"No matching movies found for: {movie_titles}")
@@ -104,11 +105,15 @@ def get_recommendations(movie_titles, num_recommendations=10, include_sequels=Tr
         # Director boost
         director_boost = 1.15 if df.iloc[idx]['director_name'] in input_directors else 1.0
         
-        # Year boost (for movies within 5 years of input movies)
+        # Year boost (for movies within 10 years before and after the average year of input movies)
         year_boost = 1.0
         movie_year = df.iloc[idx]['title_year']
-        if movie_year in input_years or any(abs(movie_year - year) <= 5 for year in input_years):
-            year_boost = 1.1
+        if movie_year and input_years:
+            avg_input_year = sum(input_years) / len(input_years)
+            if abs(movie_year - avg_input_year) <= 10:
+                year_boost = 1.2  # 20% boost for movies within 10 years
+            elif abs(movie_year - avg_input_year) <= 20:
+                year_boost = 1.1  # 10% boost for movies within 20 years
         
         # Language boost
         language_boost = 1.1 if df.iloc[idx]['language'] in input_languages else 1.0
@@ -205,7 +210,7 @@ def get_recommendations(movie_titles, num_recommendations=10, include_sequels=Tr
     columns_to_include = ['movie_title', 'director_name', 'duration', 'actor_1_name', 
                           'actor_2_name', 'actor_3_name', 'genres', 'language', 
                           'country', 'content_rating', 'title_year', 'imdb_score',
-                          'budget', 'gross', 'num_voted_users']
+                          'budget', 'gross', 'num_voted_users','synopsis']
     
     recommendations = []
     for idx, score in unique_recommendations:
