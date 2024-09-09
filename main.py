@@ -55,13 +55,44 @@ async def index():
     # Use JSONResponse to ensure proper JSON serialization
     return JSONResponse(content=json_compatible_data)
 
-@app.get("/getByName")
+@app.get("/search")
 async def fetch_by_name(name: str):
     # Load the movie data
     df = pd.read_csv('./movie_metadata.csv')
 
-    # Find all movies that match the given name (case-insensitive)
-    matching_movies = df[df['movie_title'].str.lower().str.contains(name.lower(), na=False)]
+    # Convert search term and movie titles to lowercase
+    name_lower = name.lower()
+    df['movie_title_lower'] = df['movie_title'].str.lower()
+
+    # Create masks for different priority levels
+    exact_match = df['movie_title_lower'] == name_lower
+    starts_with = df['movie_title_lower'].str.startswith(name_lower)
+    contains = df['movie_title_lower'].str.contains(name_lower, na=False)
+
+    # Combine results with priority
+    matching_movies = pd.concat([
+        df[exact_match],
+        df[starts_with & ~exact_match],
+        df[contains & ~starts_with & ~exact_match]
+    ])
+
+    # Sort the matching movies
+    def sort_key(title):
+        title_lower = title.lower()
+        if title_lower == name_lower:
+            return (0, 0)  # Exact match gets highest priority
+        if title_lower.startswith(name_lower):
+            # Extract sequel number if present
+            remaining = title_lower[len(name_lower):].strip()
+            if remaining.isdigit():
+                return (1, int(remaining))
+            elif not remaining:  # This is the first movie without a number
+                return (1, 0)
+            else:
+                return (1, float('inf'))
+        return (2, 0)  # Contains match gets lowest priority
+
+    matching_movies = matching_movies.sort_values('movie_title', key=lambda x: x.map(sort_key))
 
     # Function to convert problematic values to JSON-compatible format
     def convert_to_json_compatible(val):

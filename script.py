@@ -36,7 +36,7 @@ tfidf = TfidfVectorizer(stop_words='english')
 # Create feature matrix
 feature_matrix = tfidf.fit_transform(df['combined_features'])
 
-def get_recommendations(movie_titles, num_recommendations=10, include_sequels=True):
+def get_recommendations(movie_titles, num_recommendations=12, include_sequels=True):
     matching_indices = []
     input_genres = set()
     input_actors = set()
@@ -69,8 +69,8 @@ def get_recommendations(movie_titles, num_recommendations=10, include_sequels=Tr
     
     if len(matching_indices) == 0:
         print(f"No matching movies found for: {movie_titles}")
-        print("Available movie titles (first 10):")
-        print(df['movie_title'].head(10).tolist())
+        print("Available movie titles (first 12):")
+        print(df['movie_title'].head(12).tolist())
         return []
     
     print(f"Found {len(matching_indices)} matching movies:")
@@ -210,7 +210,7 @@ def get_recommendations(movie_titles, num_recommendations=10, include_sequels=Tr
     columns_to_include = ['movie_title', 'director_name', 'duration', 'actor_1_name', 
                           'actor_2_name', 'actor_3_name', 'genres', 'language', 
                           'country', 'content_rating', 'title_year', 'imdb_score',
-                          'budget', 'gross', 'num_voted_users','synopsis']
+                          'budget', 'gross', 'num_voted_users','synopsis','cover_url']
     
     recommendations = []
     for idx, score in unique_recommendations:
